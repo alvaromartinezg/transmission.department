@@ -92,6 +92,21 @@ body{
   box-shadow:none;
 }
 .btn.secondary:hover{ background:#e4f2f9 }
+/* Botón del header (Task assignments) */
+.header-btn{
+  margin-left: auto;              /* lo empuja a la derecha */
+  background: #0b3340;            /* azul oscuro elegante */
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 6px 14px rgba(0,0,0,.18);
+}
+
+.header-btn:hover{
+  background: #094050;
+}
 
 /* Tarjetas */
 .linkcard{
