@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bitel-Kmz Extractor Web</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+
+        .custom-file-upload {
+            margin: 20px 0;
+            padding: 15px 25px;
+            font-size: 16px;
+            border: 2px solid #00A859;
+            border-radius: 10px;
+            background-color: #00A859;
+            color: #fff;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        button {
+            background-color: #333;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .card {
+            background: #fff;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            min-width: 160px;
+        }
+
+        #status {
+            margin-top: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        /* Panel de tramos observados (antes de coordenadas) */
+        #alertas {
+            max-width: 1000px;
+            margin: 16px auto 10px;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        #alertas .warn {
+            background: #fff3f3;
+            border: 1px solid #f1c4c4;
+            padding: 8px;
+            border-radius: 6px;
+        }
+
+        #alertas .ok {
+            background: #f6fff6;
+            border: 1px solid #c7e7c7;
+            padding: 8px;
+            border-radius: 6px;
+        }
+
+        /* Título de archivo (debajo de Development y encima de coordenadas) */
+        #fileTitle {
+            margin: 6px auto 10px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #0b3d2e;
+            max-width: 900px;
+            text-align: left;
+        }
+
+        /* Área de coordenadas */
+        #output {
+            margin-top: 8px;
+            white-space: pre-wrap;
+            text-align: left;
+            background: #fff;
+            padding: 10px;
+            border: 1px solid #ccc;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+            min-height: 120px;
+        }
+
+        /* Esquina superior derecha */
+        #firma {
+            position: fixed;
+            top: 8px;
+            right: 10px;
+            text-align: right;
+            color: #FFFFFF;
+            opacity: 0.9;
+            pointer-events: none;
+        }
+
+        #firma .dev {
+            font-size: 12.5px;
+            font-style: italic;
+        }
+
+        #firma .ver {
+            font-size: 12px;
+            font-style: italic;
+        }
+/* ====== BITEL THEME (añádelo al FINAL de tu <style>) ====== */
+:root{
+  --bitel-yellow:#FFF200;
+  --bitel-cyan:#00B8EB;
+  --bitel-teal:#008D97;
+  --bitel-deep:#003E4F;
+  --ui-bg:#F5F7F9;
+  --ui-text:#3A3A3A;
+  --radius:12px;
+  --focus:0 0 0 3px rgba(0,184,235,.35);
+  --shadow:0 8px 24px rgba(0,0,0,.08);
+}
+
+/* Fondo general y texto */
+body{
+  font-family: Calibri, sans-serif;
+  background: #003E4F !important; /* contorno azulado */
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: center;
+}
+
+/* “Hero” simple usando tu logo existente */
+#logo{
+  width: 220px;
+  margin-bottom: 16px;
+  filter: none;
+}
+h2{
+  color: var(--bitel-deep);
+  font-weight: 800;
+  margin-top: 6px;
+}
+
+/* Card/área blanca común */
+.card, #output{
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(0,0,0,.06) !important;
+}
+#output{ min-height: 160px; }
+
+/* Botón “Seleccionar KMZ/KML” (tu label.custom-file-upload) */
+.custom-file-upload{
+  background: var(--bitel-cyan) !important;
+  border-color: var(--bitel-cyan) !important;
+  color:#003244 !important;
+  font-weight: 700;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0,184,235,.25);
+  transition: background .15s ease, transform .04s ease, box-shadow .2s ease;
+}
+.custom-file-upload:hover{ background: var(--bitel-teal) !important; color:#fff !important; }
+.custom-file-upload:active{ transform: translateY(1px); }
+.custom-file-upload:focus{ outline:none; box-shadow: var(--focus); }
+
+/* Botones secundarios */
+button{
+  background: #0E4051 !important;   /* azul profundo para contraste */
+  color:#E8FBFF !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  transition: background .15s ease, transform .04s ease, box-shadow .2s ease;
+}
+button:hover{ background: var(--bitel-teal) !important; }
+button:active{ transform: translateY(1px); }
+button:disabled{ opacity:.55; }
+
+/* Campo Ordenar – si quieres jerarquía tipo “secundario” */
+#btnOrdenarCoord{
+  background:#fff !important; color: var(--bitel-teal) !important;
+  border:2px solid var(--bitel-teal) !important;
+  box-shadow:none;
+}
+#btnOrdenarCoord:hover{ background: var(--bitel-teal) !important; color:#fff !important; }
+
+/* Inputs */
+.card input{
+  border:1.5px solid rgba(0,0,0,.14) !important;
+  border-radius: 12px !important;
+}
+.card input:focus{
+  outline:none; border-color: var(--bitel-cyan) !important; box-shadow: var(--focus);
+}
+
+/* Estado / mensajes y título de archivo */
+#status{ color: var(--bitel-deep) !important; }
+#fileTitle{ color: var(--bitel-deep) !important; }
+
+/* Alertas */
+#alertas .warn{
+  background: #fff7f7 !important;
+  border:1px solid #f1c4c4 !important;
+  box-shadow: var(--shadow);
+}
+#alertas .ok{
+  background: #f3fffb !important;
+  border:1px solid #c6eee2 !important;
+  box-shadow: var(--shadow);
+}
+
+/* Firma */
+#firma{ color:#2d4c54; opacity:.85; }
+/* Tarjeta/página central con esquinas y sombra (se verá el marco azul alrededor) */
+.page{
+  background: #F5F7F9;              /* fondo claro interior */
+  max-width: 1180px;
+  min-height: 100vh;
+  margin: 18px auto;                 /* deja ver el contorno azul */
+  border-radius: 20px;
+  box-shadow: 0 18px 60px rgba(0,0,0,.25);
+  padding: 0 20px 32px;
+}
+
+/* Hero amarillo con el logo y el título dentro */
+.hero{
+  background: #FFF200;
+  border-radius: 20px 20px 0 0;
+  padding: 28px 16px 22px;
+  text-align: center;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+.hero h2{
+  color: #003E4F;      /* azul profundo para buen contraste */
+  margin: 12px 0 4px;
+  font-weight: 800;
+}
+#logo{
+  width: 220px;
+  margin: 0;           /* el hero ya agrega el espaciado */
+}
+
+/* (opcional) la “tarjeta” del #output más redondeada/sombra para que combine */
+#output, .card{
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.08);
+  border: 1px solid rgba(0,0,0,.06);
+}
+
+
+
+
+        
+    </style>
+</head>
+
+<body>
+    <div id="firma">
+        <div class="dev">Development by Alvaro M.</div>
+        <div class="ver">Version 3.1 - 16/09/25</div>
+    </div>
+
+    <div class="page">
+  <header class="hero">
+    <img src="bitel_logo.png" id="logo" alt="Bitel">
+    <h2>Extractor de coordenadas de postes de un KMZ/KML</h2>
+  </header>
+
+    <label for="fileInput" class="custom-file-upload">Seleccionar KMZ/KML</label>
+    <input type="file" id="fileInput" accept=".kmz,.kml">
+
+    <div class="row">
+        <button onclick="procesarArchivo()">Extraer coordenadas</button>
+        <button onclick="copiarTexto()">Copiar resultado</button>
+        <button onclick="descargarTexto()">Descargar TXT</button>
+        <button id="btnVerMapa" onclick="verEnMapaPopup()" disabled>Ver en mapa</button>
+    </div>
+
+    <!-- Solo por coordenada -->
+    <div class="row">
+        <div class="card">
+            <strong>Inicio por lat/lon</strong>
+            <input type="number" id="latIni" step="any" placeholder="Latitud (ej. -12.05)">
+            <input type="number" id="lonIni" step="any" placeholder="Longitud (ej. -77.05)">
+            <button id="btnOrdenarCoord" onclick="ordenarDesdeCoordenada()" disabled>Ordenar</button>
+        </div>
+    </div>
+
+    <div id="status"></div>
+
+    <!-- Tramos observados ANTES del output -->
+    <div id="alertas"></div>
+
+    <!-- Nombre del archivo DEBAJO de “Development by …” y ENCIMA de coordenadas -->
+    <div id="fileTitle"></div>
+
+    <!-- Coordenadas -->
+    <div id="output"></div>
+    </div>
+    <script>
+        const UMBRAL_METROS = 1100;  // > 1100 m dispara alerta
+
+        let textoFinal = "";
+        let puntos = [];              // [{nombre, lat, lon}]
+        let puntosOrdenados = [];     // salida ordenada
+        let archivoCargado = "";      // nombre del archivo
+
+        async function procesarArchivo() {
+            const archivo = document.getElementById('fileInput').files[0];
+            if (!archivo) { alert("Selecciona un archivo .kml o .kmz primero."); return; }
+
+            archivoCargado = archivo.name || "";
+            resetResultados(false);
+            setStatus("Procesando…");
+
+            try {
+                if (archivo.name.toLowerCase().endsWith(".kmz")) {
+                    const zip = await JSZip.loadAsync(archivo);
+                    const kmlFile = Object.keys(zip.files).find(name => name.toLowerCase().endsWith(".kml"));
+                    if (!kmlFile) { alert("No se encontró archivo .kml dentro del KMZ."); setStatus(""); return; }
+                    const kmlText = await zip.files[kmlFile].async("string");
+                    procesarTextoKML(kmlText);
+                } else if (archivo.name.toLowerCase().endsWith(".kml")) {
+                    const lector = new FileReader();
+                    lector.onload = e => procesarTextoKML(e.target.result);
+                    lector.readAsText(archivo);
+                } else {
+                    alert("Formato no compatible. Usa .kml o .kmz");
+                    setStatus("");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error leyendo el archivo.");
+                setStatus("");
+            }
+        }
+
+        function procesarTextoKML(texto) {
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(texto, "text/xml");
+
+            const placemarks = Array.from(xml.getElementsByTagName("Placemark"));
+            puntos = [];
+
+            for (const pm of placemarks) {
+                const nombre = pm.getElementsByTagName("name")[0]?.textContent?.trim();
+                const coordNode = pm.getElementsByTagName("coordinates")[0];
+                if (!nombre || !coordNode) continue;
+
+                // Tomamos el primer par lon,lat (coordinates puede traer varios)
+                const raw = coordNode.textContent.trim();
+                const tokens = raw.split(/\s+/);
+                if (!tokens.length) continue;
+
+                const trio = tokens[0].split(",");
+                if (trio.length < 2) continue;
+
+                const lon = parseFloat(trio[0]);
+                const lat = parseFloat(trio[1]);
+
+                if (Number.isFinite(lat) && Number.isFinite(lon)) {
+                    puntos.push({ nombre, lat, lon });
+                }
+            }
+
+            if (puntos.length === 0) {
+                setStatus("No se encontraron puntos.");
+                renderSalida([]);
+                toggleOrden(false);
+                return;
+            }
+
+            toggleOrden(true);
+            setStatus(`Cargados ${puntos.length} puntos. Ingresa lat/lon inicial y pulsa "Ordenar".`);
+            puntosOrdenados = puntos.slice();       // vista previa (sin ordenar)
+            document.getElementById("fileTitle").textContent = archivoCargado ? `Archivo: ${archivoCargado}` : "";
+            renderSalida(puntosOrdenados);
+
+            // >>> CAMBIO CLAVE: analizar también al EXTRAER, no solo al ORDENAR <<<
+            analizarYAlertarTramosLargos();
+        }
+
+        function ordenarDesdeCoordenada() {
+            const lat = parseFloat(document.getElementById("latIni").value);
+            const lon = parseFloat(document.getElementById("lonIni").value);
+            if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+                alert("Ingresa una latitud y longitud válidas.");
+                return;
+            }
+            ordenarYMostrar(lat, lon);
+        }
+
+        function ordenarYMostrar(lat0, lon0) {
+            if (puntos.length === 0) return;
+
+            const startIdx = indiceMasCercano(lat0, lon0, puntos);
+            const startPoint = puntos[startIdx];
+
+            const restantes = puntos.slice();
+            const ruta = [];
+            ruta.push(startPoint);
+            restantes.splice(startIdx, 1);
+
+            while (restantes.length > 0) {
+                const ultimo = ruta[ruta.length - 1];
+                let mejor = 0;
+                let mejorDist = distancia(ultimo, restantes[0]);
+                for (let i = 1; i < restantes.length; i++) {
+                    const d = distancia(ultimo, restantes[i]);
+                    if (d < mejorDist) { mejorDist = d; mejor = i; }
+                }
+                ruta.push(restantes[mejor]);
+                restantes.splice(mejor, 1);
+            }
+
+            puntosOrdenados = ruta;
+            document.getElementById("fileTitle").textContent = archivoCargado ? `Archivo: ${archivoCargado}` : "";
+            renderSalida(puntosOrdenados);
+            setStatus(`Ordenados ${ruta.length} puntos iniciando en (${lat0.toFixed(6)}, ${lon0.toFixed(6)}) → más cercano: "${startPoint.nombre}"`);
+            document.getElementById("btnVerMapa").disabled = false;
+
+            // Detecta tramos > UMBRAL y alerta (y muestra listado ANTES del output)
+            analizarYAlertarTramosLargos();
+        }
+
+        function indiceMasCercano(lat0, lon0, arr) {
+            let idx = 0;
+            let best = distCoord(lat0, lon0, arr[0].lat, arr[0].lon);
+            for (let i = 1; i < arr.length; i++) {
+                const d = distCoord(lat0, lon0, arr[i].lat, arr[i].lon);
+                if (d < best) { best = d; idx = i; }
+            }
+            return idx;
+        }
+
+        // Haversine
+        function distancia(p1, p2) {
+            const R = 6371e3;
+            const toRad = deg => deg * Math.PI / 180;
+            const dLat = toRad(p2.lat - p1.lat);
+            const dLon = toRad(p2.lon - p1.lon);
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(p1.lat)) * Math.cos(toRad(p2.lat)) * Math.sin(dLon / 2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(Math.max(0, a)), Math.sqrt(Math.max(0, 1 - a))); // metros
+        }
+        function distCoord(lat1, lon1, lat2, lon2) {
+            return distancia({ lat: lat1, lon: lon1 }, { lat: lat2, lon: lon2 });
+        }
+
+        function renderSalida(lista) {
+            textoFinal = lista.map(p => `${p.nombre}, ${p.lat}, ${p.lon}`).join("\n");
+            document.getElementById("output").textContent = textoFinal || "(sin datos)";
+        }
+
+        function copiarTexto() {
+            if (!textoFinal) return;
+            navigator.clipboard.writeText(textoFinal).then(() => alert("Texto copiado al portapapeles."));
+        }
+
+        function descargarTexto() {
+            if (!textoFinal) return;
+            const blob = new Blob([textoFinal], { type: "text/plain" });
+            const enlace = document.createElement("a");
+            enlace.href = URL.createObjectURL(blob);
+            enlace.download = "coordenadas_ordenadas.txt";
+            enlace.click();
+        }
+
+        function toggleOrden(enabled) {
+            document.getElementById("btnOrdenarCoord").disabled = !enabled;
+            document.getElementById("btnVerMapa").disabled = !enabled;
+        }
+
+        function setStatus(msg) { document.getElementById("status").textContent = msg; }
+        function resetResultados(resetTitle = true) {
+            puntos = []; puntosOrdenados = []; textoFinal = "";
+            renderSalida([]);
+            toggleOrden(false);
+            setStatus("");
+            limpiarAlertas();
+            if (resetTitle) document.getElementById("fileTitle").textContent = "";
+        }
+
+        function limpiarAlertas() {
+            const cont = document.getElementById("alertas");
+            cont.innerHTML = "";
+        }
+
+        // ======== Análisis de tramos largos (> UMBRAL) ========
+        function analizarYAlertarTramosLargos() {
+            if (!puntosOrdenados || puntosOrdenados.length < 2) { limpiarAlertas(); return; }
+
+            const largos = [];
+            for (let i = 0; i < puntosOrdenados.length - 1; i++) {
+                const a = puntosOrdenados[i], b = puntosOrdenados[i + 1];
+                const d = distancia(a, b);
+                if (d > UMBRAL_METROS) {
+                    largos.push({ i: i + 1, desde: a.nombre, hasta: b.nombre, dist: d });
+                }
+            }
+
+            const cont = document.getElementById("alertas");
+            cont.innerHTML = "";
+
+            if (largos.length) {
+                const lista = largos.map(x =>
+                    `${x.i}. ${x.desde} → ${x.hasta} — ${formatMeters(x.dist)}`
+                ).join("<br>");
+                cont.innerHTML = `<div class="warn"><b>Tramos > ${UMBRAL_METROS} m detectados:</b><br>${lista}</div>`;
+
+                const texto = largos.map(x => `${x.i}. ${x.desde} → ${x.hasta}: ${formatMeters(x.dist)}`).join("\n");
+                alert(`¡Atención!\nExisten ${largos.length} tramo(s) con distancia > ${UMBRAL_METROS} m:\n\n${texto}`);
+            } else {
+                cont.innerHTML = `<div class="ok">No se detectaron tramos con distancia > ${UMBRAL_METROS} m.</div>`;
+            }
+        }
+
+        function formatMeters(m) {
+            if (m >= 1000) return (m / 1000).toFixed(2).replace('.', ',') + " km";
+            return Math.round(m).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + " m";
+        }
+
+        // ======== Ventana emergente con mapa (Leaflet cargado dentro del popup) ========
+        function verEnMapaPopup() {
+            if (puntosOrdenados.length === 0) { alert("Primero ordena los puntos."); return; }
+
+            const w = Math.min(1100, window.screen.availWidth - 40);
+            const h = Math.min(700, window.screen.availHeight - 80);
+            const left = Math.max(0, (window.screen.availWidth - w) / 2);
+            const top = Math.max(0, (window.screen.availHeight - h) / 2);
+
+            const win = window.open("", "mapPopup",
+                `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=no`);
+
+            if (!win) { alert("El navegador bloqueó la ventana emergente. Permite pop-ups para este sitio."); return; }
+
+            const data = {
+                puntos: puntosOrdenados,
+                umbral: UMBRAL_METROS,
+                archivo: archivoCargado
+            };
+
+            // Documento HTML del popup, con etiquetas de cierre ESCAPADAS para evitar aviso en VS Code
+            const popupHtml = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Mapa - ${escapeHtml(archivoCargado || "Ruta")}</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
+<style>
+  html, body { height:100%; margin:0; }
+  #topbar { padding:8px 12px; font-family:Calibri, sans-serif; background:#f7f7f7; border-bottom:1px solid #ddd; }
+  #topbar h3 { margin:6px 0 0; font-size:16px; color:#0b3d2e; }
+  #map { width:100%; height: calc(100% - 52px); }
+</style>
+</head>
+<body>
+  <div id="topbar">
+    <div><strong>Archivo:</strong> ${escapeHtml(archivoCargado || "-")}</div>
+    <h3>Ruta ordenada y tramos > ${UMBRAL_METROS} m en rojo</h3>
+  </div>
+  <div id="map"></div>
+  <script>
+    (function(){
+      const data = ${JSON.stringify(data)};
+      const puntos = data.puntos || [];
+      const umbral = data.umbral || 1100;
+
+      const map = L.map('map');
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+
+      const latlngs = [];
+      for (let i=0;i<puntos.length;i++){
+        const p = puntos[i];
+        const ll = [p.lat, p.lon];
+        latlngs.push(ll);
+        const m = L.marker(ll).addTo(map);
+        m.bindPopup('<b>'+(i+1)+'. '+escapeHtml(p.nombre)+'</b><br>'+p.lat.toFixed(6)+', '+p.lon.toFixed(6));
+      }
+
+      // Línea general
+      L.polyline(latlngs).addTo(map);
+
+      // Tramos > umbral (rojo)
+      for (let i=0;i<puntos.length-1;i++){
+        const a = puntos[i], b = puntos[i+1];
+        const d = dist(a.lat,a.lon,b.lat,b.lon);
+        if (d > umbral) {
+          L.polyline([[a.lat,a.lon],[b.lat,b.lon]], {color:'red', weight:4}).addTo(map);
+        }
+      }
+
+      const bounds = L.latLngBounds(latlngs);
+      map.fitBounds(bounds.pad(0.15));
+
+      function dist(lat1,lon1,lat2,lon2){
+        const R=6371000;
+        const toRad = deg => deg * Math.PI/180;
+        const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+        const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+        return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+      }
+      function escapeHtml(str){return String(str).replace(/[&<>\"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));}
+    })();
+  <\/script>
+<\/body>
+<\/html>`;
+
+            win.document.open();
+            win.document.write(popupHtml);
+            win.document.close();
+        }
+
+        // ===== util =====
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
+        }
+    </script>
+</body>
+
+</html>
+
+
+
+
