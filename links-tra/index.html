@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Transmission Links database</title>
+
+  <!-- Evitar cache -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/main.js" defer></script>
+</head>
+
+<body>
+  <header class="header">
+    <div class="header-left">
+      <!-- Si no tienes logo, borra esta línea o sube img/bitel_logo.png -->
+      <img 
+        src="img/bitel_logo.png" 
+        alt="Logo" 
+        style="cursor:pointer;"
+        onclick="window.open('https://alvaromartinezg.github.io/transmission.department/','_blank')"
+        />
+
+      <div class="title-wrap">
+        <div class="title">Transmission Links database</div>
+      </div>
+    </div>
+
+    <!-- Derecha: Edit + fecha debajo -->
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px; margin-left:auto; text-align:right;">
+      <a
+        id="btnOpenSheet"
+        class="btn header-btn"
+        href="https://docs.google.com/spreadsheets/d/1t6MH60weJzUU30DJZ1s3tjhOtjsX1IqersjEL15roZs/edit?usp=sharing"
+        target="_blank"
+        rel="noopener noreferrer"
+        style="text-decoration:none;"
+      >
+        Edit
+      </a>
+
+      <div style="font-size:12px; opacity:.85; white-space:nowrap;">
+        Last update: <span id="lastUpdate">—</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Secciones dinámicas según Columna A -->
+    <div id="sections"></div>
+
+    <!-- Solo para mostrar errores si ocurren -->
+    <div id="errorBox" class="muted"
+         style="margin-top:10px; display:none; color:#7a1f1f; font-weight:700;">
+      Error: <span id="errorText"></span>
+    </div>
+
+    <div class="footer">© Transmission Links database</div>
+  </main>
+</body>
+</html>
