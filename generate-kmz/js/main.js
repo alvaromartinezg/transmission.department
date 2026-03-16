@@ -134,6 +134,7 @@ function validateRow(obj) {
 function getValidatedData() {
   const rows = getUsedRows();
   const parsed = rows.map((row, idx) => parseRow(row, idx));
+
   return parsed.map(item => ({
     ...item,
     validation: validateRow(item)
