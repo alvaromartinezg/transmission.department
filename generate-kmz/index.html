@@ -5,69 +5,77 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Excel to KML / KMZ</title>
 
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+  <!-- Handsontable -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.5.0/dist/handsontable.full.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/handsontable@14.5.0/dist/handsontable.full.min.js"></script>
 
+  <!-- JSZip -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
+  <!-- External CSS -->
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
-  <div class="page-shell">
-    <div class="main-card">
-      <header class="hero">
-        <div class="hero-logo">bitel</div>
-        <h1>Excel to KML / KMZ</h1>
-      </header>
+  <header class="header">
+    <div class="header-left">
+      <img
+        src="bitel_logo.png"
+        alt="Bitel logo"
+      />
 
-      <section class="toolbar">
-        <div class="actions">
-          <button class="btn btn-secondary" id="btnClear">Clear Sheet</button>
-          <button class="btn btn-primary" id="btnExportKML">Export KML</button>
-          <button class="btn btn-primary" id="btnExportKMZ">Export KMZ</button>
-        </div>
-      </section>
-
-      <section class="table-section">
-        <div class="table-card">
-          <div class="table-header">
-            <h2>Data Grid</h2>
-          </div>
-          <div id="grid"></div>
-        </div>
-      </section>
-
-      <section class="footer-panel">
-        <div class="status-box">
-          <h3>Validation Summary</h3>
-
-          <div class="status-line">
-            <div class="status-item">
-              <span class="label">Rows with data</span>
-              <span class="value" id="countRows">0</span>
-            </div>
-
-            <div class="status-item success">
-              <span class="label">Valid rows</span>
-              <span class="value" id="countValid">0</span>
-            </div>
-
-            <div class="status-item danger">
-              <span class="label">Rows with errors</span>
-              <span class="value" id="countInvalid">0</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="error-box">
-          <h3>Validation Errors</h3>
-          <ul id="errorList">
-            <li>No errors found.</li>
-          </ul>
-        </div>
-      </section>
+      <div class="title-wrap">
+        <div class="title">Excel to KML / KMZ</div>
+        <div class="subtitle">Paste Excel rows and export valid coordinates</div>
+      </div>
     </div>
-  </div>
+
+    <div class="header-actions">
+      <button class="btn header-btn secondary-dark" id="btnClear">Clear Sheet</button>
+      <button class="btn header-btn" id="btnExportKML">Export KML</button>
+      <button class="btn header-btn" id="btnExportKMZ">Export KMZ</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="section">
+      <h2>Data Grid</h2>
+      <div id="grid"></div>
+    </section>
+
+    <section class="section">
+      <h2>Validation Summary</h2>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-label">Rows with data</div>
+          <div class="summary-value" id="countRows">0</div>
+        </div>
+
+        <div class="summary-card valid">
+          <div class="summary-label">Valid rows</div>
+          <div class="summary-value" id="countValid">0</div>
+        </div>
+
+        <div class="summary-card invalid">
+          <div class="summary-label">Rows with errors</div>
+          <div class="summary-value" id="countInvalid">0</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section error-section">
+      <h2>Validation Errors</h2>
+      <ul id="errorList" class="error-list">
+        <li>No errors found.</li>
+      </ul>
+    </section>
+
+    <div class="footer">© Excel to KML / KMZ</div>
+  </main>
 
   <script src="js/main.js"></script>
 </body>
