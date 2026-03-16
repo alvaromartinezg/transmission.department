@@ -282,3 +282,30 @@ body{
     width:100%;
   }
 }
+/* Keep the yellow header above Handsontable floating layers */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 2000;
+}
+
+/* Prevent the table area from visually leaking outside the card */
+.section {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Handsontable floating header layers */
+.handsontable .ht_clone_top,
+.handsontable .ht_clone_top_left_corner,
+.handsontable .ht_clone_left,
+.handsontable .wtHolder,
+.handsontable .wtHider {
+  z-index: 1 !important;
+}
+
+/* Optional: keep the grid visually contained */
+#grid {
+  position: relative;
+  z-index: 1;
+}
