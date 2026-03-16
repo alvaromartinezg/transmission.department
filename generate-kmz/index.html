@@ -5,76 +5,69 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Excel to KML / KMZ</title>
 
-  <!-- Handsontable -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.5.0/dist/handsontable.full.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/handsontable@14.5.0/dist/handsontable.full.min.js"></script>
 
-  <!-- JSZip -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-  <!-- External CSS -->
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="topbar-left">
-      <div class="title-group">
+  <div class="page-shell">
+    <div class="main-card">
+      <header class="hero">
+        <div class="hero-logo">bitel</div>
         <h1>Excel to KML / KMZ</h1>
-        <p>Paste your Excel rows and export valid coordinates</p>
-      </div>
-    </div>
+      </header>
 
-    <div class="actions">
-      <button class="btn btn-secondary" id="btnClear">Clear Sheet</button>
-      <button class="btn btn-primary" id="btnExportKML">Export KML</button>
-      <button class="btn btn-primary" id="btnExportKMZ">Export KMZ</button>
-    </div>
-  </header>
+      <section class="toolbar">
+        <div class="actions">
+          <button class="btn btn-secondary" id="btnClear">Clear Sheet</button>
+          <button class="btn btn-primary" id="btnExportKML">Export KML</button>
+          <button class="btn btn-primary" id="btnExportKMZ">Export KMZ</button>
+        </div>
+      </section>
 
-  <main class="container">
-    <section class="table-card">
-      <div class="table-header">
-        <h2>Data Grid</h2>
-        <span class="table-note">Expected columns: SITES, LAT, LONG, HOUSE, TOWER, IP, DESCRIPTION, FOLDER</span>
-      </div>
+      <section class="table-section">
+        <div class="table-card">
+          <div class="table-header">
+            <h2>Data Grid</h2>
+          </div>
+          <div id="grid"></div>
+        </div>
+      </section>
 
-      <div id="grid"></div>
-    </section>
-
-    <section class="footer-panel">
-      <div class="status-box">
-        <div class="status-header">
+      <section class="footer-panel">
+        <div class="status-box">
           <h3>Validation Summary</h3>
+
+          <div class="status-line">
+            <div class="status-item">
+              <span class="label">Rows with data</span>
+              <span class="value" id="countRows">0</span>
+            </div>
+
+            <div class="status-item success">
+              <span class="label">Valid rows</span>
+              <span class="value" id="countValid">0</span>
+            </div>
+
+            <div class="status-item danger">
+              <span class="label">Rows with errors</span>
+              <span class="value" id="countInvalid">0</span>
+            </div>
+          </div>
         </div>
 
-        <div class="status-line">
-          <div class="status-item">
-            <span class="label">Rows with data</span>
-            <span class="value" id="countRows">0</span>
-          </div>
-
-          <div class="status-item success">
-            <span class="label">Valid rows</span>
-            <span class="value" id="countValid">0</span>
-          </div>
-
-          <div class="status-item danger">
-            <span class="label">Rows with errors</span>
-            <span class="value" id="countInvalid">0</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="error-box">
-        <div class="error-header">
+        <div class="error-box">
           <h3>Validation Errors</h3>
+          <ul id="errorList">
+            <li>No errors found.</li>
+          </ul>
         </div>
-        <ul id="errorList">
-          <li>No errors found.</li>
-        </ul>
-      </div>
-    </section>
-  </main>
+      </section>
+    </div>
+  </div>
 
   <script src="js/main.js"></script>
 </body>
