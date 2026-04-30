@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>NEC ipasolink TRAFFIC ANALYZER</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f0f0f0;
+    padding: 20px;
+}
+
+.container {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+}
+
+h1 {
+    color: #222;
+}
+
+input {
+    margin: 20px 0;
+}
+
+#chartCanvas {
+    width: 100%;
+    height: 420px;
+    border: 1px solid #ccc;
+    background: #fff;
+    margin: 20px 0;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 20px;
+    font-size: 14px;
+}
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 7px;
+    text-align: center;
+}
+
+th {
+    background: #333;
+    color: white;
+}
+
+tr:nth-child(even) {
+    background: #f7f7f7;
+}
+
+.legend {
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+.rx {
+    color: #007bff;
+}
+
+.tx {
+    color: #ff5722;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>📊 NEC ipasolink TRAFFIC ANALYZER</h1>
+
+    <input type="file" id="fileInput" accept=".rmon,.txt,.csv">
+
+    <div class="legend">
+        <span class="rx">━ RX Mbps</span> &nbsp;&nbsp;
+        <span class="tx">━ TX Mbps</span>
+    </div>
+
+    <canvas id="chartCanvas"></canvas>
+
+    <table id="resultTable">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>RX Mbps</th>
+                <th>TX Mbps</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script>
+document.getElementById("fileInput").addEventListener("change", function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+        procesarArchivo(event.target.result);
+    };
+
+    reader.readAsText(file);
+});
+
+function procesarArchivo(texto) {
+    const lineas = texto.split(/\r?\n/);
+
+    let labels = [];
+    let rxData = [];
+    let txData = [];
+
+    const tbody = document.querySelector("#resultTable tbody");
+    tbody.innerHTML = "";
+
+    lineas.forEach(linea => {
+        if (linea.trim() === "") return;
+
+        const partes = linea.trim().split(",");
+
+        if (partes.length < 23) return;
+        if (!/^\d{2}:\d{2}$/.test(partes[0].trim())) return;
+
+        let time = partes[0].trim();
+
+        let L = parseFloat(partes[11]);
+        let M = parseFloat(partes[12]);
+        let N = parseFloat(partes[13]);
+        let O = parseFloat(partes[14]);
+        let P = parseFloat(partes[15]);
+        let Q = parseFloat(partes[16]);
+        let R = parseFloat(partes[17]);
+        let S = parseFloat(partes[18]);
+        let T = parseFloat(partes[19]);
+        let U = parseFloat(partes[20]);
+        let V = parseFloat(partes[21]);
+        let W = parseFloat(partes[22]);
+
+        let rx_bits =
+            L * 64 * 8 +
+            N * ((65 + 127) / 2) * 8 +
+            P * ((128 + 255) / 2) * 8 +
+            R * ((256 + 511) / 2) * 8 +
+            T * ((512 + 1023) / 2) * 8 +
+            V * ((1024 + 1518) / 2) * 8;
+
+        let tx_bits =
+            M * 64 * 8 +
+            O * ((65 + 127) / 2) * 8 +
+            Q * ((128 + 255) / 2) * 8 +
+            S * ((256 + 511) / 2) * 8 +
+            U * ((512 + 1023) / 2) * 8 +
+            W * ((1024 + 1518) / 2) * 8;
+
+        let rx_mbps = rx_bits / 900 / 1000000;
+        let tx_mbps = tx_bits / 900 / 1000000;
+
+        if (isNaN(rx_mbps) || isNaN(tx_mbps)) return;
+
+        labels.push(time);
+        rxData.push(rx_mbps);
+        txData.push(tx_mbps);
+
+        tbody.insertAdjacentHTML("beforeend", `
+            <tr>
+                <td>${time}</td>
+                <td>${rx_mbps.toFixed(2)}</td>
+                <td>${tx_mbps.toFixed(2)}</td>
+            </tr>
+        `);
+    });
+
+    dibujarGrafica(labels, rxData, txData);
+}
+
+function dibujarGrafica(labels, rxData, txData) {
+    const canvas = document.getElementById("chartCanvas");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = canvas.clientWidth;
+    canvas.height = 420;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (labels.length === 0) {
+        ctx.fillText("No hay datos para graficar", 30, 30);
+        return;
+    }
+
+    const paddingLeft = 70;
+    const paddingRight = 30;
+    const paddingTop = 30;
+    const paddingBottom = 60;
+
+    const chartWidth = canvas.width - paddingLeft - paddingRight;
+    const chartHeight = canvas.height - paddingTop - paddingBottom;
+
+    const maxValue = Math.max(...rxData, ...txData);
+    const minValue = 0;
+
+    function xPos(i) {
+        return paddingLeft + (i / (labels.length - 1)) * chartWidth;
+    }
+
+    function yPos(value) {
+        return paddingTop + chartHeight - ((value - minValue) / (maxValue - minValue)) * chartHeight;
+    }
+
+    // Fondo
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Ejes
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(paddingLeft, paddingTop);
+    ctx.lineTo(paddingLeft, paddingTop + chartHeight);
+    ctx.lineTo(paddingLeft + chartWidth, paddingTop + chartHeight);
+    ctx.stroke();
+
+    // Líneas horizontales
+    ctx.fillStyle = "#333";
+    ctx.font = "12px Arial";
+
+    for (let i = 0; i <= 5; i++) {
+        const value = maxValue * i / 5;
+        const y = yPos(value);
+
+        ctx.strokeStyle = "#ddd";
+        ctx.beginPath();
+        ctx.moveTo(paddingLeft, y);
+        ctx.lineTo(paddingLeft + chartWidth, y);
+        ctx.stroke();
+
+        ctx.fillStyle = "#333";
+        ctx.fillText(value.toFixed(1), 10, y + 4);
+    }
+
+    function dibujarLinea(data, color) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+
+        data.forEach((value, i) => {
+            const x = xPos(i);
+            const y = yPos(value);
+
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+
+        ctx.stroke();
+
+        data.forEach((value, i) => {
+            const x = xPos(i);
+            const y = yPos(value);
+
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
+
+    dibujarLinea(rxData, "#007bff");
+    dibujarLinea(txData, "#ff5722");
+
+    // Etiquetas eje X
+    ctx.fillStyle = "#333";
+    ctx.font = "11px Arial";
+
+    const salto = Math.ceil(labels.length / 12);
+
+    labels.forEach((label, i) => {
+        if (i % salto === 0) {
+            const x = xPos(i);
+            ctx.save();
+            ctx.translate(x, paddingTop + chartHeight + 20);
+            ctx.rotate(-Math.PI / 4);
+            ctx.fillText(label, 0, 0);
+            ctx.restore();
+        }
+    });
+
+    // Títulos
+    ctx.fillStyle = "#111";
+    ctx.font = "bold 14px Arial";
+    ctx.fillText("Tráfico RX/TX en Mbps", paddingLeft, 20);
+
+    ctx.font = "12px Arial";
+    ctx.fillText("Mbps", 10, 20);
+}
+</script>
+
+</body>
+</html>
