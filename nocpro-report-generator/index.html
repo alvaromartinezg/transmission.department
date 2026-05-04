@@ -1,1 +1,405 @@
 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Report</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root{
+      --bitel-yellow:#FFE000;
+      --bitel-blue:#00A3E0;
+      --bitel-blue-600:#008bbf;
+      --page-bg:#0b3340;
+      --card-bg:#ffffff;
+      --text:#0e1b1f;
+      --muted:#5b6a70;
+      --ring: rgba(0,163,224,.35);
+      --shadow: 0 10px 24px rgba(0,0,0,.12);
+      --radius:18px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial;
+      background: var(--page-bg);
+      color: var(--text);
+    }
+
+    .header{
+      background: var(--bitel-yellow);
+      padding: 18px 22px;
+      display:flex;
+      align-items:center;
+      gap:16px;
+      position:sticky;
+      top:0;
+      z-index:5;
+      border-bottom: 1px solid rgba(0,0,0,.06);
+    }
+
+    .header-left{
+      display:flex;
+      align-items:center;
+      gap:16px;
+    }
+
+    .header img{
+      height:56px;
+      width:auto;
+      display:block;
+      filter: drop-shadow(0 1px 0 rgba(0,0,0,.06));
+    }
+
+    .title-wrap{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+
+    .title{
+      font-weight:800;
+      letter-spacing:.2px;
+      font-size: clamp(20px, 2.4vw, 30px);
+      color:#0b1a1f;
+    }
+
+    .subtitle{
+      font-weight:600;
+      color:#20424c;
+      font-size:14px;
+      opacity:.9;
+    }
+
+    .container{
+      max-width: 900px;
+      margin: 28px auto;
+      padding: 0 16px;
+    }
+
+    .section{
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 20px;
+      border:1px solid rgba(0,0,0,.06);
+      overflow:hidden;
+    }
+
+    .section h2{
+      margin: -20px -20px 18px -20px;
+      font-size: 20px;
+      color: #0b1a1f;
+      background: #cfd8dc;
+      padding: 12px 18px;
+      border-radius: 10px 10px 0 0;
+    }
+
+    .hint{
+      color: var(--muted);
+      font-size:13px;
+      margin:6px 0 12px;
+    }
+
+    .upload-grid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap:16px;
+      margin-top: 10px;
+    }
+
+    .upload-card{
+      border:1px dashed #d6dadd;
+      border-radius:14px;
+      padding:14px;
+      background:#f8fbfc;
+    }
+
+    label{
+      font-weight:800;
+      display:block;
+      margin-bottom:8px;
+      color:#0d2b36;
+    }
+
+    input[type="file"]{
+      width:100%;
+      padding:11px;
+      border:1px solid #d6ecf6;
+      border-radius:14px;
+      background:#ffffff;
+      color:#0d2b36;
+      font-weight:600;
+      cursor:pointer;
+    }
+
+    input[type="file"]:focus{
+      outline:none;
+      box-shadow:0 0 0 4px var(--ring);
+    }
+
+    .btn{
+      width:100%;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      text-decoration:none;
+      cursor:pointer;
+      border:1px solid transparent;
+      border-radius:14px;
+      padding:13px 14px;
+      font-weight:800;
+      letter-spacing:.2px;
+      background: var(--bitel-blue);
+      color:white;
+      box-shadow: 0 6px 14px rgba(0,163,224,.25);
+      transition: transform .08s ease, box-shadow .12s ease, background .12s ease;
+      margin-top:18px;
+    }
+
+    .btn:hover{
+      transform: translateY(-1px);
+      background: var(--bitel-blue-600);
+    }
+
+    .btn:focus{
+      outline: none;
+      box-shadow: 0 0 0 4px var(--ring);
+    }
+
+    .btn:disabled{
+      background:#8b9aa0;
+      cursor:not-allowed;
+      transform:none;
+      box-shadow:none;
+    }
+
+    #status{
+      margin-top:18px;
+      padding:14px;
+      border-radius:14px;
+      background:#eef7fb;
+      color:#0c4455;
+      white-space:pre-line;
+      font-size:14px;
+      font-weight:700;
+      border:1px solid #d6ecf6;
+    }
+
+    .footer{
+      color:#c9d6db;
+      font-size:12px;
+      text-align:center;
+      padding:18px 0 32px;
+    }
+
+    @media (max-width:720px){
+      .upload-grid{ grid-template-columns: 1fr; }
+    }
+
+    @media (max-width:520px){
+      .header{ padding:14px 14px }
+      .header img{ height:48px }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img src="../assets/img/bitel_logo.png" alt="Logo Bitel" />
+      <div class="title-wrap">
+        <div class="title">NOCPRO daily report generator</div>
+        <div class="subtitle">Transmission Department</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="section">
+      <h2>Daily Report</h2>
+      <p class="hint">Upload the database and daily report files to generate the light Excel output.</p>
+
+      <div class="upload-grid">
+        <div class="upload-card">
+          <label>1. KPI transmission MW (Database)</label>
+          <input type="file" id="dbFile" accept=".xlsx,.xls" />
+        </div>
+
+        <div class="upload-card">
+          <label>2. Exported from NOCPRO</label>
+          <input type="file" id="dailyFile" accept=".xlsx,.xls,.xlsm" />
+        </div>
+      </div>
+
+      <button id="btnProcesar" class="btn">Process and Download</button>
+
+      <div id="status">Status: waiting files...</div>
+    </section>
+
+    <div class="footer">© NOCPRO daily report generator</div>
+  </main>
+
+  <script>
+    const statusDiv = document.getElementById('status');
+    const btnProcesar = document.getElementById('btnProcesar');
+
+    function status(msg) {
+      statusDiv.textContent = msg;
+      console.log(msg);
+    }
+
+    function normalizeIP(v) {
+      return v === undefined || v === null ? "" : String(v).trim();
+    }
+
+    function parseSat(v) {
+      if (v === undefined || v === null || v === "") return null;
+
+      const n = Number(v);
+
+      if (Number.isNaN(n)) return null;
+
+      return n;
+    }
+
+    function readFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, { type: 'array', cellStyles: false, cellNF: false, cellHTML: false });
+            resolve(wb);
+          } catch (err) {
+            reject(err);
+          }
+        };
+
+        reader.onerror = function() {
+          reject(new Error('No se pudo leer el archivo.'));
+        };
+
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function maxRow(sheet) {
+      if (!sheet || !sheet['!ref']) return 0;
+      return XLSX.utils.decode_range(sheet['!ref']).e.r + 1;
+    }
+
+    function requireSheet(workbook, sheetName, fileName) {
+      const sheet = workbook.Sheets[sheetName];
+
+      if (!sheet) {
+        const available = workbook.SheetNames.join(', ');
+        throw new Error(
+          `No page found "${sheetName}" en: ${fileName}\n` +
+          `Pages found: ${available}`
+        );
+      }
+
+      return sheet;
+    }
+
+    async function processFiles() {
+      try {
+        if (typeof XLSX === 'undefined') {
+          throw new Error('Problem with librery check with administrator.');
+        }
+
+        const dbFile = document.getElementById('dbFile').files[0];
+        const dailyFile = document.getElementById('dailyFile').files[0];
+
+        if (!dbFile || !dailyFile) {
+          alert('Upload both files.');
+          status('Status: not all files uploaded.');
+          return;
+        }
+
+        btnProcesar.disabled = true;
+        status('Status: Reading files...');
+
+        const dbWB = await readFile(dbFile);
+        const dailyWB = await readFile(dailyFile);
+
+        status('Status: reviewing pages...');
+
+        const dbSheet = requireSheet(dbWB, 'GENERAL REPORT', dbFile.name);
+        const dailySheet = requireSheet(dailyWB, 'Sheet', dailyFile.name);
+
+        status('Status: Proccesing...');
+
+        const satMap = new Map();
+        const dailyMaxRow = maxRow(dailySheet);
+
+        for (let r = 4; r <= dailyMaxRow; r++) {
+          const ip = normalizeIP(dailySheet[`I${r}`]?.v);
+          const sat = parseSat(dailySheet[`J${r}`]?.v);
+
+          if (!ip || sat === null) continue;
+
+          if (!satMap.has(ip) || sat > satMap.get(ip)) {
+            satMap.set(ip, sat);
+          }
+        }
+
+        status('Status: Creating daily report...');
+
+        const output = [];
+        output.push(['IP I', 'IP J', 'Sat I', 'Sat J', 'Max']);
+
+        const dbMaxRow = maxRow(dbSheet);
+
+        for (let r = 3; r <= dbMaxRow; r++) {
+          const ipI = normalizeIP(dbSheet[`I${r}`]?.v);
+          const ipJ = normalizeIP(dbSheet[`J${r}`]?.v);
+
+          if (!ipI && !ipJ) continue;
+
+          const sI = satMap.has(ipI) ? satMap.get(ipI) / 100 : '-';
+          const sJ = satMap.has(ipJ) ? satMap.get(ipJ) / 100 : '-';
+
+          const maxVal = Math.max(
+            typeof sI === 'number' ? sI : 0,
+            typeof sJ === 'number' ? sJ : 0
+          );
+
+          output.push([ipI, ipJ, sI, sJ, maxVal]);
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet(output);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Daily report');
+
+        status('Status: downloading file...');
+
+        XLSX.writeFile(wb, 'Daily_report_liviano.xlsx', { compression: true });
+
+        status(
+          'Proceso terminado correctamente.\n' +
+          'IPs únicas encontradas en reporte diario: ' + satMap.size + '\n' +
+          'Filas generadas: ' + (output.length - 1)
+        );
+      } catch (err) {
+        console.error(err);
+        alert('Error: ' + err.message);
+        status('Error:\n' + err.message);
+      } finally {
+        btnProcesar.disabled = false;
+      }
+    }
+
+    btnProcesar.addEventListener('click', processFiles);
+  </script>
+</body>
+</html>
