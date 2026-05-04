@@ -386,9 +386,9 @@
         XLSX.writeFile(wb, 'Daily_report_liviano.xlsx', { compression: true });
 
         status(
-          'Proceso terminado correctamente.\n' +
-          'IPs únicas encontradas en reporte diario: ' + satMap.size + '\n' +
-          'Filas generadas: ' + (output.length - 1)
+          'Process finished successfully.\n' +
+          'IPs found in report exported from NOCPRO: ' + satMap.size + '\n' +
+          'Files generated: ' + (output.length - 1)
         );
       } catch (err) {
         console.error(err);
