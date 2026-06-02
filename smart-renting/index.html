@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart-Renting</title>
+
+<style>
+:root{
+    --bitel-yellow:#FFF200;
+    --bitel-cyan:#00B8EB;
+    --bitel-teal:#008D97;
+    --bitel-deep:#003E4F;
+    --bg:#f5f7fa;
+}
+
+*{
+    box-sizing:border-box;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+body{
+    margin:0;
+    background:var(--bg);
+    padding:20px;
+}
+
+.container{
+    max-width:1400px;
+    margin:auto;
+}
+
+.card{
+    background:#fff;
+    border-radius:12px;
+    padding:20px;
+    box-shadow:0 2px 10px rgba(0,0,0,.08);
+    margin-bottom:20px;
+}
+
+h1{
+    margin-top:0;
+    color:var(--bitel-deep);
+}
+
+textarea{
+    width:100%;
+    min-height:260px;
+    resize:vertical;
+    padding:12px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    font-size:14px;
+}
+
+.buttons{
+    display:flex;
+    gap:10px;
+    margin-top:15px;
+    flex-wrap:wrap;
+}
+
+button{
+    border:none;
+    padding:12px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.btn-send{
+    background:var(--bitel-cyan);
+    color:white;
+}
+
+.btn-copy{
+    background:#16a34a;
+    color:white;
+}
+
+.btn-clear{
+    background:#dc2626;
+    color:white;
+}
+
+.status{
+    margin-top:10px;
+    font-weight:bold;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:15px;
+}
+
+th{
+    background:var(--bitel-deep);
+    color:white;
+    padding:10px;
+    border:1px solid #ddd;
+}
+
+td{
+    padding:8px;
+    border:1px solid #ddd;
+}
+
+.hidden{
+    display:none;
+}
+</style>
+
+</head>
+<body>
+
+<div class="container">
+
+<div class="card">
+    <h1>🏠 Smart-Renting</h1>
+
+    <textarea id="txtInput" placeholder="Pegue aquí el mensaje de WhatsApp..."></textarea>
+
+    <div class="buttons">
+        <button class="btn-send" onclick="consultar()">Consultar reporte</button>
+        <button class="btn-copy" onclick="copiarExcel()">📋 Copiar para Excel</button>
+        <button class="btn-clear" onclick="limpiar()">🗑 Limpiar</button>
+    </div>
+
+    <div class="status" id="status"></div>
+</div>
+
+<div class="card">
+    <table id="tblResultado" class="hidden">
+        <thead>
+            <tr>
+                <th>SITE</th>
+                <th>CANDIDATE</th>
+                <th>LAT</th>
+                <th>LONG</th>
+                <th>HEIGHT OF TREE</th>
+                <th>HEIGHT OF HOUSE</th>
+                <th>HEIGHT OF TOWER</th>
+                <th>LINK TO</th>
+                <th>LOGICAL LINK</th>
+                <th>Main Tx</th>
+            </tr>
+        </thead>
+        <tbody id="tbodyResultado"></tbody>
+    </table>
+</div>
+
+</div>
+
+<script>
+
+const WEBHOOK_URL =
+"https://n8n.38-250-161-19.nip.io/webhook/smart-renting";
+
+let ultimoResultado = [];
+
+async function consultar(){
+
+    const texto = document.getElementById("txtInput").value.trim();
+
+    if(!texto){
+        alert("Ingrese información.");
+        return;
+    }
+
+    document.getElementById("status").innerHTML = "Procesando...";
+
+    try{
+
+        const response = await fetch(WEBHOOK_URL,{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                mensaje:texto
+            })
+        });
+
+const responseData = await response.json();
+
+        const registros = normalizarRespuesta(responseData);
+
+        ultimoResultado = registros;
+
+        mostrarTabla(registros);
+
+        document.getElementById("status").innerHTML =
+        `✅ ${registros.length} registro(s) encontrado(s).`;
+
+    }
+    catch(error){
+
+        console.error(error);
+
+        document.getElementById("status").innerHTML =
+        "❌ Error: " + error.message;
+    }
+}
+
+function normalizarRespuesta(responseData){
+
+    let data = responseData;
+
+    // Caso 1: n8n devuelve directamente un array:
+    // [ { SITE, CANDIDATE, ... } ]
+    if (Array.isArray(data)) {
+        return data;
+    }
+
+    // Caso 2: n8n devuelve { mensaje: "...json..." }
+    if (data.mensaje) {
+        data = typeof data.mensaje === "string"
+            ? JSON.parse(data.mensaje)
+            : data.mensaje;
+    }
+
+    // Caso 3: n8n devuelve { text: "...json..." }
+    else if (data.text) {
+        data = typeof data.text === "string"
+            ? JSON.parse(data.text)
+            : data.text;
+    }
+
+    // Caso 4: devuelve { registros: [...] }
+    if (data && Array.isArray(data.registros)) {
+        return data.registros;
+    }
+
+    // Caso 5: devuelve un solo objeto { SITE, ... }
+    if (data && data.SITE) {
+        return [data];
+    }
+
+    throw new Error("La respuesta no tiene un formato reconocido.");
+}
+
+function mostrarTabla(registros){
+
+    const tbody = document.getElementById("tbodyResultado");
+
+    tbody.innerHTML = "";
+
+    registros.forEach(r=>{
+
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td>${r["SITE"] ?? ""}</td>
+            <td>${r["CANDIDATE"] ?? ""}</td>
+            <td>${r["LAT"] ?? ""}</td>
+            <td>${r["LONG"] ?? ""}</td>
+            <td>${r["HEIGHT OF TREE"] ?? ""}</td>
+            <td>${r["HEIGHT OF HOUSE"] ?? ""}</td>
+            <td>${r["HEIGHT OF TOWER"] ?? ""}</td>
+            <td>${r["LINK TO"] ?? ""}</td>
+            <td>${r["LOGICAL LINK"] ?? ""}</td>
+            <td>${r["Main Tx"] ?? ""}</td>
+        `;
+
+        tbody.appendChild(tr);
+
+    });
+
+    document.getElementById("tblResultado")
+        .classList.remove("hidden");
+}
+
+async function copiarExcel(){
+
+    if(!ultimoResultado.length){
+        alert("No hay datos.");
+        return;
+    }
+
+    let texto = "";
+
+    ultimoResultado.forEach(r=>{
+
+        texto +=
+        `${r["SITE"] ?? ""}\t`+
+        `${r["CANDIDATE"] ?? ""}\t`+
+        `${r["LAT"] ?? ""}\t`+
+        `${r["LONG"] ?? ""}\t`+
+        `${r["HEIGHT OF TREE"] ?? ""}\t`+
+        `${r["HEIGHT OF HOUSE"] ?? ""}\t`+
+        `${r["HEIGHT OF TOWER"] ?? ""}\t`+
+        `${r["LINK TO"] ?? ""}\t`+
+        `${r["LOGICAL LINK"] ?? ""}\t`+
+        `${r["Main Tx"] ?? ""}\n`;
+
+    });
+
+    await navigator.clipboard.writeText(texto);
+
+    alert("Datos copiados para Excel.");
+}
+
+function limpiar(){
+
+    document.getElementById("txtInput").value = "";
+
+    document.getElementById("tbodyResultado").innerHTML = "";
+
+    document.getElementById("tblResultado")
+        .classList.add("hidden");
+
+    document.getElementById("status").innerHTML = "";
+
+    ultimoResultado = [];
+}
+
+</script>
+
+</body>
+</html>
