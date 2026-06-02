@@ -154,11 +154,23 @@ td{
 </div>
 
 <script>
-
 const WEBHOOK_URL =
 "https://n8n.38-250-161-19.nip.io/webhook/smart-renting";
 
 let ultimoResultado = [];
+
+const COLUMNAS = [
+    "SITE",
+    "CANDIDATE",
+    "LAT",
+    "LONG",
+    "HEIGHT OF TREE",
+    "HEIGHT OF HOUSE",
+    "HEIGHT OF TOWER",
+    "LINK TO",
+    "LOGICAL LINK",
+    "Main Tx"
+];
 
 async function consultar(){
 
@@ -172,18 +184,23 @@ async function consultar(){
     document.getElementById("status").innerHTML = "Procesando...";
 
     try{
-
         const response = await fetch(WEBHOOK_URL,{
             method:"POST",
-            headers:{
-                "Content-Type":"application/json"
-            },
-            body:JSON.stringify({
-                mensaje:texto
-            })
+            headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify({ mensaje:texto })
         });
 
-const responseData = await response.json();
+        const rawText = await response.text();
+
+        console.log("RESPUESTA RAW N8N:", rawText);
+
+        let responseData;
+
+        try{
+            responseData = JSON.parse(rawText);
+        }catch(e){
+            throw new Error("n8n no devolvió JSON válido.");
+        }
 
         const registros = normalizarRespuesta(responseData);
 
@@ -194,82 +211,159 @@ const responseData = await response.json();
         document.getElementById("status").innerHTML =
         `✅ ${registros.length} registro(s) encontrado(s).`;
 
-    }
-    catch(error){
-
+    }catch(error){
         console.error(error);
-
         document.getElementById("status").innerHTML =
         "❌ Error: " + error.message;
     }
 }
 
-function normalizarRespuesta(responseData){
+function normalizarRespuesta(data){
 
-    let data = responseData;
+    data = limpiarSiEsTextoJson(data);
 
-    // Caso 1: n8n devuelve directamente un array:
-    // [ { SITE, CANDIDATE, ... } ]
-    if (Array.isArray(data)) {
-        return data;
+    // Caso: array directo
+    if(Array.isArray(data)){
+        return extraerRegistrosDeArray(data);
     }
 
-    // Caso 2: n8n devuelve { mensaje: "...json..." }
-    if (data.mensaje) {
-        data = typeof data.mensaje === "string"
-            ? JSON.parse(data.mensaje)
-            : data.mensaje;
+    // Casos comunes de n8n
+    const posiblesCampos = [
+        "mensaje",
+        "text",
+        "data",
+        "body",
+        "json",
+        "output",
+        "result",
+        "registros"
+    ];
+
+    for(const campo of posiblesCampos){
+        if(data && data[campo] !== undefined){
+            const valor = limpiarSiEsTextoJson(data[campo]);
+
+            if(Array.isArray(valor)){
+                return extraerRegistrosDeArray(valor);
+            }
+
+            if(valor && typeof valor === "object"){
+                return normalizarRespuesta(valor);
+            }
+        }
     }
 
-    // Caso 3: n8n devuelve { text: "...json..." }
-    else if (data.text) {
-        data = typeof data.text === "string"
-            ? JSON.parse(data.text)
-            : data.text;
-    }
-
-    // Caso 4: devuelve { registros: [...] }
-    if (data && Array.isArray(data.registros)) {
-        return data.registros;
-    }
-
-    // Caso 5: devuelve un solo objeto { SITE, ... }
-    if (data && data.SITE) {
+    // Caso: un solo objeto con SITE
+    if(data && data["SITE"]){
         return [data];
     }
 
-    throw new Error("La respuesta no tiene un formato reconocido.");
+    throw new Error("La respuesta no tiene formato reconocido.");
+}
+
+function limpiarSiEsTextoJson(valor){
+
+    if(typeof valor !== "string"){
+        return valor;
+    }
+
+    let texto = valor.trim();
+
+    // Quita bloques tipo ```json ... ```
+    texto = texto
+        .replace(/^```json/i, "")
+        .replace(/^```/i, "")
+        .replace(/```$/i, "")
+        .trim();
+
+    try{
+        return JSON.parse(texto);
+    }catch(e){
+        return valor;
+    }
+}
+
+function extraerRegistrosDeArray(arr){
+
+    const registros = [];
+
+    arr.forEach(item => {
+
+        item = limpiarSiEsTextoJson(item);
+
+        // Si el item ya es registro
+        if(item && item["SITE"]){
+            registros.push(item);
+            return;
+        }
+
+        // Si n8n lo envuelve como { json: {...} }
+        if(item && item.json){
+            const json = limpiarSiEsTextoJson(item.json);
+
+            if(Array.isArray(json)){
+                registros.push(...extraerRegistrosDeArray(json));
+            }else if(json && json["SITE"]){
+                registros.push(json);
+            }else{
+                const sub = normalizarRespuesta(json);
+                registros.push(...sub);
+            }
+
+            return;
+        }
+
+        // Si viene como { data: [...] }, { body: [...] }, etc.
+        const campos = ["mensaje","text","data","body","output","result","registros"];
+
+        for(const campo of campos){
+            if(item && item[campo] !== undefined){
+                const valor = limpiarSiEsTextoJson(item[campo]);
+
+                if(Array.isArray(valor)){
+                    registros.push(...extraerRegistrosDeArray(valor));
+                }else if(valor && valor["SITE"]){
+                    registros.push(valor);
+                }
+
+                return;
+            }
+        }
+    });
+
+    if(!registros.length){
+        throw new Error("No se encontraron registros con SITE.");
+    }
+
+    return registros;
 }
 
 function mostrarTabla(registros){
 
     const tbody = document.getElementById("tbodyResultado");
-
     tbody.innerHTML = "";
 
-    registros.forEach(r=>{
+    registros.forEach(r => {
 
         const tr = document.createElement("tr");
 
-        tr.innerHTML = `
-            <td>${r["SITE"] ?? ""}</td>
-            <td>${r["CANDIDATE"] ?? ""}</td>
-            <td>${r["LAT"] ?? ""}</td>
-            <td>${r["LONG"] ?? ""}</td>
-            <td>${r["HEIGHT OF TREE"] ?? ""}</td>
-            <td>${r["HEIGHT OF HOUSE"] ?? ""}</td>
-            <td>${r["HEIGHT OF TOWER"] ?? ""}</td>
-            <td>${r["LINK TO"] ?? ""}</td>
-            <td>${r["LOGICAL LINK"] ?? ""}</td>
-            <td>${r["Main Tx"] ?? ""}</td>
-        `;
+        tr.innerHTML = COLUMNAS.map(col =>
+            `<td>${escaparHtml(r[col] ?? "")}</td>`
+        ).join("");
 
         tbody.appendChild(tr);
-
     });
 
-    document.getElementById("tblResultado")
-        .classList.remove("hidden");
+    document.getElementById("tblResultado").classList.remove("hidden");
+}
+
+function escaparHtml(valor){
+    return String(valor)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
 }
 
 async function copiarExcel(){
@@ -281,20 +375,8 @@ async function copiarExcel(){
 
     let texto = "";
 
-    ultimoResultado.forEach(r=>{
-
-        texto +=
-        `${r["SITE"] ?? ""}\t`+
-        `${r["CANDIDATE"] ?? ""}\t`+
-        `${r["LAT"] ?? ""}\t`+
-        `${r["LONG"] ?? ""}\t`+
-        `${r["HEIGHT OF TREE"] ?? ""}\t`+
-        `${r["HEIGHT OF HOUSE"] ?? ""}\t`+
-        `${r["HEIGHT OF TOWER"] ?? ""}\t`+
-        `${r["LINK TO"] ?? ""}\t`+
-        `${r["LOGICAL LINK"] ?? ""}\t`+
-        `${r["Main Tx"] ?? ""}\n`;
-
+    ultimoResultado.forEach(r => {
+        texto += COLUMNAS.map(col => r[col] ?? "").join("\t") + "\n";
     });
 
     await navigator.clipboard.writeText(texto);
@@ -305,18 +387,13 @@ async function copiarExcel(){
 function limpiar(){
 
     document.getElementById("txtInput").value = "";
-
     document.getElementById("tbodyResultado").innerHTML = "";
-
-    document.getElementById("tblResultado")
-        .classList.add("hidden");
-
+    document.getElementById("tblResultado").classList.add("hidden");
     document.getElementById("status").innerHTML = "";
 
     ultimoResultado = [];
 }
-
 </script>
-
+    
 </body>
 </html>
