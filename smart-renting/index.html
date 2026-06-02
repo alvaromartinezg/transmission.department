@@ -203,8 +203,6 @@ async function consultar(){
 
         const rawText = await response.text();
 
-        console.log("RESPUESTA RAW:", rawText);
-
         if(!rawText.trim()){
             throw new Error("El webhook respondió vacío.");
         }
@@ -217,7 +215,9 @@ async function consultar(){
             throw new Error("El webhook no devolvió un JSON válido.");
         }
 
-        const registros = normalizarRespuesta(responseData);
+const registros = normalizarRespuesta(responseData);
+
+ultimoResultado = registros;
 
         ultimoResultado = registros;
 
@@ -235,51 +235,59 @@ async function consultar(){
     }
 }
 
-function normalizarRespuesta(data){
+function normalizarRespuesta(responseData){
 
-    data = convertirTextoJson(data);
-
-    if(Array.isArray(data)){
-        return extraerRegistrosArray(data);
+    if(typeof responseData === "string"){
+        responseData = JSON.parse(responseData);
     }
 
-    if(data && typeof data === "object"){
+    if(Array.isArray(responseData)){
 
-        if(data["SITE"]){
-            return [data];
+        // Si viene como array directo:
+        // [{SITE:...}, {SITE:...}]
+        if(responseData.every(item => item && item["SITE"] !== undefined)){
+            return responseData;
         }
 
-        const camposPosibles = [
-            "json",
-            "body",
-            "data",
-            "mensaje",
-            "message",
-            "text",
-            "output",
-            "result",
-            "registros"
-        ];
+        // Si viene como n8n:
+        // [{json:{SITE:...}}, {json:{SITE:...}}]
+        if(responseData.every(item => item && item.json)){
+            return responseData.map(item => item.json);
+        }
 
-        for(const campo of camposPosibles){
-
-            if(data[campo] !== undefined){
-
-                const valor = convertirTextoJson(data[campo]);
-
-                if(Array.isArray(valor)){
-                    return extraerRegistrosArray(valor);
-                }
-
-                if(valor && typeof valor === "object"){
-                    return normalizarRespuesta(valor);
-                }
+        // Si viene mezclado
+        return responseData.map(item => {
+            if(item && item["SITE"] !== undefined){
+                return item;
             }
-        }
+
+            if(item && item.json && item.json["SITE"] !== undefined){
+                return item.json;
+            }
+
+            return null;
+        }).filter(item => item !== null);
+    }
+
+    if(responseData && responseData["SITE"] !== undefined){
+        return [responseData];
+    }
+
+    if(responseData && responseData.data){
+        return normalizarRespuesta(responseData.data);
+    }
+
+    if(responseData && responseData.body){
+        return normalizarRespuesta(responseData.body);
+    }
+
+    if(responseData && responseData.registros){
+        return normalizarRespuesta(responseData.registros);
     }
 
     throw new Error("No se encontraron registros válidos.");
 }
+
 
 function extraerRegistrosArray(array){
 
