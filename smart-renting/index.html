@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -89,6 +88,10 @@ button{
     font-weight:bold;
 }
 
+.table-wrap{
+    overflow-x:auto;
+}
+
 table{
     width:100%;
     border-collapse:collapse;
@@ -100,62 +103,65 @@ th{
     color:white;
     padding:10px;
     border:1px solid #ddd;
+    white-space:nowrap;
 }
 
 td{
     padding:8px;
     border:1px solid #ddd;
+    white-space:nowrap;
 }
 
 .hidden{
     display:none;
 }
 </style>
-
 </head>
+
 <body>
 
 <div class="container">
 
-<div class="card">
-    <h1>🏠 Smart-Renting</h1>
+    <div class="card">
+        <h1>🏠 Smart-Renting</h1>
 
-    <textarea id="txtInput" placeholder="Pegue aquí el mensaje de WhatsApp..."></textarea>
+        <textarea id="txtInput" placeholder="Pegue aquí el mensaje de WhatsApp..."></textarea>
 
-    <div class="buttons">
-        <button class="btn-send" onclick="consultar()">Consultar reporte</button>
-        <button class="btn-copy" onclick="copiarExcel()">📋 Copiar para Excel</button>
-        <button class="btn-clear" onclick="limpiar()">🗑 Limpiar</button>
+        <div class="buttons">
+            <button class="btn-send" onclick="consultar()">Consultar reporte</button>
+            <button class="btn-copy" onclick="copiarExcel()">📋 Copiar para Excel</button>
+            <button class="btn-clear" onclick="limpiar()">🗑 Limpiar</button>
+        </div>
+
+        <div class="status" id="status"></div>
     </div>
 
-    <div class="status" id="status"></div>
-</div>
-
-<div class="card">
-    <table id="tblResultado" class="hidden">
-        <thead>
-            <tr>
-                <th>SITE</th>
-                <th>CANDIDATE</th>
-                <th>LAT</th>
-                <th>LONG</th>
-                <th>HEIGHT OF TREE</th>
-                <th>HEIGHT OF HOUSE</th>
-                <th>HEIGHT OF TOWER</th>
-                <th>LINK TO</th>
-                <th>LOGICAL LINK</th>
-                <th>Main Tx</th>
-            </tr>
-        </thead>
-        <tbody id="tbodyResultado"></tbody>
-    </table>
-</div>
+    <div class="card">
+        <div class="table-wrap">
+            <table id="tblResultado" class="hidden">
+                <thead>
+                    <tr>
+                        <th>SITE</th>
+                        <th>CANDIDATE</th>
+                        <th>LAT</th>
+                        <th>LONG</th>
+                        <th>HEIGHT OF TREE</th>
+                        <th>HEIGHT OF HOUSE</th>
+                        <th>HEIGHT OF TOWER</th>
+                        <th>LINK TO</th>
+                        <th>LOGICAL LINK</th>
+                        <th>Main Tx</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyResultado"></tbody>
+            </table>
+        </div>
+    </div>
 
 </div>
 
 <script>
-const WEBHOOK_URL =
-"https://n8n.38-250-161-19.nip.io/webhook/smart-renting";
+const WEBHOOK_URL = "https://n8n.38-250-161-19.nip.io/webhook/smart-renting";
 
 let ultimoResultado = [];
 
@@ -184,22 +190,31 @@ async function consultar(){
     document.getElementById("status").innerHTML = "Procesando...";
 
     try{
+
         const response = await fetch(WEBHOOK_URL,{
             method:"POST",
-            headers:{ "Content-Type":"application/json" },
-            body:JSON.stringify({ mensaje:texto })
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                mensaje:texto
+            })
         });
 
         const rawText = await response.text();
 
-        console.log("RESPUESTA RAW N8N:", rawText);
+        console.log("RESPUESTA RAW:", rawText);
+
+        if(!rawText.trim()){
+            throw new Error("El webhook respondió vacío.");
+        }
 
         let responseData;
 
         try{
             responseData = JSON.parse(rawText);
-        }catch(e){
-            throw new Error("n8n no devolvió JSON válido.");
+        }catch(error){
+            throw new Error("El webhook no devolvió un JSON válido.");
         }
 
         const registros = normalizarRespuesta(responseData);
@@ -212,7 +227,9 @@ async function consultar(){
         `✅ ${registros.length} registro(s) encontrado(s).`;
 
     }catch(error){
+
         console.error(error);
+
         document.getElementById("status").innerHTML =
         "❌ Error: " + error.message;
     }
@@ -220,48 +237,115 @@ async function consultar(){
 
 function normalizarRespuesta(data){
 
-    data = limpiarSiEsTextoJson(data);
+    data = convertirTextoJson(data);
 
-    // Caso: array directo
     if(Array.isArray(data)){
-        return extraerRegistrosDeArray(data);
+        return extraerRegistrosArray(data);
     }
 
-    // Casos comunes de n8n
-    const posiblesCampos = [
-        "mensaje",
-        "text",
-        "data",
-        "body",
-        "json",
-        "output",
-        "result",
-        "registros"
-    ];
+    if(data && typeof data === "object"){
 
-    for(const campo of posiblesCampos){
-        if(data && data[campo] !== undefined){
-            const valor = limpiarSiEsTextoJson(data[campo]);
+        if(data["SITE"]){
+            return [data];
+        }
 
-            if(Array.isArray(valor)){
-                return extraerRegistrosDeArray(valor);
-            }
+        const camposPosibles = [
+            "json",
+            "body",
+            "data",
+            "mensaje",
+            "message",
+            "text",
+            "output",
+            "result",
+            "registros"
+        ];
 
-            if(valor && typeof valor === "object"){
-                return normalizarRespuesta(valor);
+        for(const campo of camposPosibles){
+
+            if(data[campo] !== undefined){
+
+                const valor = convertirTextoJson(data[campo]);
+
+                if(Array.isArray(valor)){
+                    return extraerRegistrosArray(valor);
+                }
+
+                if(valor && typeof valor === "object"){
+                    return normalizarRespuesta(valor);
+                }
             }
         }
     }
 
-    // Caso: un solo objeto con SITE
-    if(data && data["SITE"]){
-        return [data];
-    }
-
-    throw new Error("La respuesta no tiene formato reconocido.");
+    throw new Error("No se encontraron registros válidos.");
 }
 
-function limpiarSiEsTextoJson(valor){
+function extraerRegistrosArray(array){
+
+    const registros = [];
+
+    array.forEach(item => {
+
+        item = convertirTextoJson(item);
+
+        if(item && item["SITE"]){
+            registros.push(item);
+            return;
+        }
+
+        if(item && item.json){
+
+            const json = convertirTextoJson(item.json);
+
+            if(Array.isArray(json)){
+                registros.push(...extraerRegistrosArray(json));
+            }else if(json && json["SITE"]){
+                registros.push(json);
+            }
+
+            return;
+        }
+
+        if(item && typeof item === "object"){
+
+            const camposPosibles = [
+                "body",
+                "data",
+                "mensaje",
+                "message",
+                "text",
+                "output",
+                "result",
+                "registros"
+            ];
+
+            for(const campo of camposPosibles){
+
+                if(item[campo] !== undefined){
+
+                    const valor = convertirTextoJson(item[campo]);
+
+                    if(Array.isArray(valor)){
+                        registros.push(...extraerRegistrosArray(valor));
+                    }else if(valor && valor["SITE"]){
+                        registros.push(valor);
+                    }
+
+                    return;
+                }
+            }
+        }
+    });
+
+    if(!registros.length){
+        throw new Error("El array recibido no contiene registros con SITE.");
+    }
+
+    return registros;
+}
+
+function convertirTextoJson(valor){
 
     if(typeof valor !== "string"){
         return valor;
@@ -269,7 +353,6 @@ function limpiarSiEsTextoJson(valor){
 
     let texto = valor.trim();
 
-    // Quita bloques tipo ```json ... ```
     texto = texto
         .replace(/^```json/i, "")
         .replace(/^```/i, "")
@@ -278,78 +361,24 @@ function limpiarSiEsTextoJson(valor){
 
     try{
         return JSON.parse(texto);
-    }catch(e){
+    }catch(error){
         return valor;
     }
-}
-
-function extraerRegistrosDeArray(arr){
-
-    const registros = [];
-
-    arr.forEach(item => {
-
-        item = limpiarSiEsTextoJson(item);
-
-        // Si el item ya es registro
-        if(item && item["SITE"]){
-            registros.push(item);
-            return;
-        }
-
-        // Si n8n lo envuelve como { json: {...} }
-        if(item && item.json){
-            const json = limpiarSiEsTextoJson(item.json);
-
-            if(Array.isArray(json)){
-                registros.push(...extraerRegistrosDeArray(json));
-            }else if(json && json["SITE"]){
-                registros.push(json);
-            }else{
-                const sub = normalizarRespuesta(json);
-                registros.push(...sub);
-            }
-
-            return;
-        }
-
-        // Si viene como { data: [...] }, { body: [...] }, etc.
-        const campos = ["mensaje","text","data","body","output","result","registros"];
-
-        for(const campo of campos){
-            if(item && item[campo] !== undefined){
-                const valor = limpiarSiEsTextoJson(item[campo]);
-
-                if(Array.isArray(valor)){
-                    registros.push(...extraerRegistrosDeArray(valor));
-                }else if(valor && valor["SITE"]){
-                    registros.push(valor);
-                }
-
-                return;
-            }
-        }
-    });
-
-    if(!registros.length){
-        throw new Error("No se encontraron registros con SITE.");
-    }
-
-    return registros;
 }
 
 function mostrarTabla(registros){
 
     const tbody = document.getElementById("tbodyResultado");
+
     tbody.innerHTML = "";
 
     registros.forEach(r => {
 
         const tr = document.createElement("tr");
 
-        tr.innerHTML = COLUMNAS.map(col =>
-            `<td>${escaparHtml(r[col] ?? "")}</td>`
-        ).join("");
+        tr.innerHTML = COLUMNAS.map(col => {
+            return `<td>${escaparHtml(r[col] ?? "")}</td>`;
+        }).join("");
 
         tbody.appendChild(tr);
     });
@@ -358,6 +387,7 @@ function mostrarTabla(registros){
 }
 
 function escaparHtml(valor){
+
     return String(valor)
         .replaceAll("&","&amp;")
         .replaceAll("<","&lt;")
@@ -373,11 +403,9 @@ async function copiarExcel(){
         return;
     }
 
-    let texto = "";
-
-    ultimoResultado.forEach(r => {
-        texto += COLUMNAS.map(col => r[col] ?? "").join("\t") + "\n";
-    });
+    const texto = ultimoResultado.map(r => {
+        return COLUMNAS.map(col => r[col] ?? "").join("\t");
+    }).join("\n");
 
     await navigator.clipboard.writeText(texto);
 
@@ -394,6 +422,6 @@ function limpiar(){
     ultimoResultado = [];
 }
 </script>
-    
+
 </body>
 </html>
