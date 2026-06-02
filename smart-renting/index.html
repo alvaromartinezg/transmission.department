@@ -219,12 +219,14 @@ const registros = normalizarRespuesta(responseData);
 
 ultimoResultado = registros;
 
-        ultimoResultado = registros;
+mostrarTabla(registros);
 
-        mostrarTabla(registros);
+if(responseData && responseData.download_url){
+    descargarZip(responseData.download_url);
+}
 
-        document.getElementById("status").innerHTML =
-        `✅ ${registros.length} registro(s) encontrado(s).`;
+document.getElementById("status").innerHTML =
+`✅ ${registros.length} registro(s) encontrado(s).`;
 
     }catch(error){
 
@@ -419,7 +421,19 @@ async function copiarExcel(){
 
     alert("Datos copiados para Excel.");
 }
+function descargarZip(downloadUrl){
 
+    if(!downloadUrl){
+        return;
+    }
+
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    a.download = "";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+}
 function limpiar(){
 
     document.getElementById("txtInput").value = "";
