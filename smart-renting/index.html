@@ -215,16 +215,21 @@ async function consultar(){
             throw new Error("El webhook no devolvió un JSON válido.");
         }
 
-const registros = normalizarRespuesta(responseData);
+const paquete = Array.isArray(responseData) ? responseData[0] : responseData;
+
+const registros = normalizarRespuesta(paquete);
+
+const kmzUrl = paquete.kmz_url || paquete.download_url || "";
+
 console.log("RESPUESTA COMPLETA:", responseData);
-console.log("DOWNLOAD URL:", responseData.download_url);
-        
+console.log("KMZ URL:", kmzUrl);
+
 ultimoResultado = registros;
 
 mostrarTabla(registros);
 
-if(responseData && responseData.download_url){
-    descargarZip(responseData.download_url);
+if(kmzUrl){
+    descargarZip(kmzUrl);
 }
 
 document.getElementById("status").innerHTML =
