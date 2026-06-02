@@ -216,7 +216,9 @@ async function consultar(){
         }
 
 const registros = normalizarRespuesta(responseData);
-
+console.log("RESPUESTA COMPLETA:", responseData);
+console.log("DOWNLOAD URL:", responseData.download_url);
+        
 ultimoResultado = registros;
 
 mostrarTabla(registros);
